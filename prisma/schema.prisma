@@ -1,0 +1,127 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  teacherSubjects Subject[]    @relation("TeacherSubjects")
+  enrollments     Enrollment[]
+  tasks          Task[]        @relation("TeacherTasks")
+  submissions    Submission[]
+
+  @@map("users")
+}
+
+model Subject {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  code        String   @unique
+  teacherId   Int      @map("teacher_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  teacher     User         @relation("TeacherSubjects", fields: [teacherId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+  tasks       Task[]
+
+  @@map("subjects")
+}
+
+model Enrollment {
+  id         Int      @id @default(autoincrement())
+  studentId  Int      @map("student_id")
+  subjectId  Int      @map("subject_id")
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+
+  // Relations
+  student  User    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject  Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, subjectId])
+  @@map("enrollments")
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  subjectId   Int       @map("subject_id")
+  teacherId   Int       @map("teacher_id")
+  dueDate     DateTime? @map("due_date")
+  maxPoints   Int       @default(100) @map("max_points")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  subject     Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher     User         @relation("TeacherTasks", fields: [teacherId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@map("tasks")
+}
+
+model Submission {
+  id           Int       @id @default(autoincrement())
+  taskId       Int       @map("task_id")
+  studentId    Int       @map("student_id")
+  content      String?
+  status       Status    @default(PENDING)
+  pointsEarned Int?      @map("points_earned")
+  feedback     String?
+  submittedAt  DateTime? @map("submitted_at")
+  gradedAt     DateTime? @map("graded_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  task    Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  student User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  files   SubmissionFile[]
+
+  @@unique([taskId, studentId])
+  @@map("submissions")
+}
+
+model SubmissionFile {
+  id           Int      @id @default(autoincrement())
+  submissionId Int      @map("submission_id")
+  fileName     String   @map("file_name")
+  originalName String   @map("original_name")
+  filePath     String   @map("file_path")
+  fileSize     Int      @map("file_size")
+  fileType     String   @map("file_type")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("submission_files")
+}
+
+enum Role {
+  TEACHER
+  STUDENT
+}
+
+enum Status {
+  PENDING
+  SUBMITTED
+  GRADED
+}
